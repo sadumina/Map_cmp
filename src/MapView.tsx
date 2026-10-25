@@ -50,6 +50,13 @@ const colorMatch = (): maplibregl.ExpressionSpecification =>
 
 type Ring = number[][];
 
+function mapFitPadding() {
+  if (typeof window !== "undefined" && window.innerWidth <= 760) {
+    return { top: 112, right: 24, bottom: 220, left: 24 };
+  }
+  return { top: 110, right: 350, bottom: 140, left: 300 };
+}
+
 function pointInRing(point: [number, number], ring: Ring): boolean {
   let inside = false;
   for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
@@ -394,7 +401,7 @@ export default function MapView({ landslide, flood, mode, selectedId, visualizat
       (value as Array<number[] | number[][] | number[][][] >).forEach(visit);
     };
     visit(coordinates);
-    if (!bounds.isEmpty()) mapRef.current?.fitBounds(bounds, { padding: 120, maxZoom: 10, essential: true });
+    if (!bounds.isEmpty()) mapRef.current?.fitBounds(bounds, { padding: mapFitPadding(), maxZoom: 10, essential: true });
   }, [selectedFloodPriorityName, floodPriority]);
 
   useEffect(() => {
@@ -403,7 +410,7 @@ export default function MapView({ landslide, flood, mode, selectedId, visualizat
     const bounds = new maplibregl.LngLatBounds();
     landslide.features.forEach((feature) => bounds.extend(feature.geometry.coordinates));
     if (!bounds.isEmpty()) {
-      map.fitBounds(bounds, { padding: { top: 110, right: 350, bottom: 140, left: 300 }, maxZoom: 11, duration: 0 });
+      map.fitBounds(bounds, { padding: mapFitPadding(), maxZoom: 11, duration: 0 });
       fittedData.current = true;
     }
   }, [landslide]);

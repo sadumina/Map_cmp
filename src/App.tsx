@@ -205,6 +205,7 @@ function MapDashboard() {
   const [selectedFloodPriority, setSelectedFloodPriority] = useState<FloodPriorityCollection["features"][number]["properties"] | null>(null);
   const [selectedExposure, setSelectedExposure] = useState<PopulationArea | null>(null);
   const [selectedRiskArea, setSelectedRiskArea] = useState<FloodPriorityProperties | null>(null);
+  const [mobilePanel, setMobilePanel] = useState<"layers" | "records" | "details" | null>(null);
   const [assessmentTab, setAssessmentTab] = useState<"overview" | "people" | "infrastructure" | "explainability" | "actions">("overview");
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState<RiskFilters>({ minScore: 0, maxScore: 1, tiers: [...TIERS], query: "" });
@@ -298,7 +299,7 @@ function MapDashboard() {
   return (
     <div className="app" lang={language === "si" ? "si" : language === "ta" ? "ta" : "en"}>
       {errors.length > 0 && <div className="error-banner" role="alert">{errors.join(" ")} <button onClick={() => { landslideState.retry(); floodState.retry(); floodPriorityState.retry(); }}>Retry</button></div>}
-      <MapView landslide={filteredLandslide} flood={filteredFlood} floodPriority={floodPriority} selectedFloodPriorityName={selectedFloodPriority?.boundary_name ?? null} mode={mode} visualization={visualization} terrain={terrain} contours={contours} roads={roads} population={population} selectedId={selected?.id ?? null} onSelect={(risk, relatedArea) => { setSelected(risk); setSelectedRiskArea(relatedArea ?? null); if (risk) { setSelectedRoad(null); setSelectedPopulation(null); setSelectedFloodPriority(null); setSelectedExposure(null); } }} onRoadSelect={(road) => { setSelectedRoad(road); if (road) { setSelected(null); setSelectedRiskArea(null); setSelectedPopulation(null); setSelectedFloodPriority(null); setSelectedExposure(null); } }} onPopulationSelect={(record) => { setSelectedPopulation(record); if (record) { setSelected(null); setSelectedRiskArea(null); setSelectedRoad(null); setSelectedFloodPriority(null); setSelectedExposure(null); } }} onFloodPrioritySelect={(area) => { setSelectedFloodPriority(area); setAssessmentTab("overview"); if (area) { setSelected(null); setSelectedRiskArea(null); setSelectedRoad(null); setSelectedPopulation(null); setSelectedExposure(null); } }} />
+      <MapView landslide={filteredLandslide} flood={filteredFlood} floodPriority={floodPriority} selectedFloodPriorityName={selectedFloodPriority?.boundary_name ?? null} mode={mode} visualization={visualization} terrain={terrain} contours={contours} roads={roads} population={population} selectedId={selected?.id ?? null} onSelect={(risk, relatedArea) => { setSelected(risk); setSelectedRiskArea(relatedArea ?? null); if (risk) { setMobilePanel("details"); setSelectedRoad(null); setSelectedPopulation(null); setSelectedFloodPriority(null); setSelectedExposure(null); } }} onRoadSelect={(road) => { setSelectedRoad(road); if (road) { setMobilePanel("details"); setSelected(null); setSelectedRiskArea(null); setSelectedPopulation(null); setSelectedFloodPriority(null); setSelectedExposure(null); } }} onPopulationSelect={(record) => { setSelectedPopulation(record); if (record) { setMobilePanel("details"); setSelected(null); setSelectedRiskArea(null); setSelectedRoad(null); setSelectedFloodPriority(null); setSelectedExposure(null); } }} onFloodPrioritySelect={(area) => { setSelectedFloodPriority(area); setAssessmentTab("overview"); if (area) { setMobilePanel("details"); setSelected(null); setSelectedRiskArea(null); setSelectedRoad(null); setSelectedPopulation(null); setSelectedExposure(null); } }} />
 
       <header className="topbar card">
         <div className="brand">
@@ -314,9 +315,14 @@ function MapDashboard() {
         {anyDemo && <span className="demo-badge">DEMO DATA</span>}
         <label className="language">Language <select value={language} onChange={(event) => setLanguage(event.target.value as typeof language)}><option value="en">English</option><option value="si">සිංහල</option><option value="ta">தமிழ்</option></select></label>
       </header>
+      <nav className="mobile-map-nav" aria-label="Map tools">
+        <button className={mobilePanel === "layers" ? "active" : ""} aria-pressed={mobilePanel === "layers"} onClick={() => setMobilePanel(mobilePanel === "layers" ? null : "layers")}>☰ <span>Layers</span></button>
+        <button className={mobilePanel === "records" ? "active" : ""} aria-pressed={mobilePanel === "records"} onClick={() => setMobilePanel(mobilePanel === "records" ? null : "records")}>◉ <span>Records</span></button>
+        <button className={mobilePanel === "details" ? "active" : ""} aria-pressed={mobilePanel === "details"} disabled={!selected && !selectedRoad && !selectedPopulation && !selectedFloodPriority} onClick={() => setMobilePanel(mobilePanel === "details" ? null : "details")}>ⓘ <span>Risk info</span></button>
+      </nav>
       {shareMessage && <div className="map-toast" role="status" onAnimationEnd={() => setShareMessage(null)}>{shareMessage}</div>}
 
-      <aside className="left card" aria-label="Map controls">
+      <aside className={`left card ${mobilePanel === "layers" ? "mobile-open" : ""}`} aria-label="Map controls">
         <h3>{labels.layers}</h3>
         <div className="switch" role="group" aria-label="Layer">
           {(["landslide", "flood", "both"] as LayerMode[]).map((layer) => <button key={layer} className={mode === layer ? "on" : ""} aria-pressed={mode === layer} onClick={() => setMode(layer)}>{layer === "landslide" ? "Landslide" : layer === "flood" ? "Flood" : "Both"}</button>)}
@@ -337,7 +343,7 @@ function MapDashboard() {
               .filter((feature) => `${feature.properties.boundary_name} ${feature.properties.District} ${feature.properties.Division}`.toLowerCase().includes(filters.query.trim().toLowerCase()))
               .slice(0, 5)
               .map((feature) => (
-                <button key={feature.properties.boundary_name} onClick={() => { setSelectedFloodPriority(feature.properties); setSelectedExposure(null); setAssessmentTab("overview"); }}>
+                <button key={feature.properties.boundary_name} onClick={() => { setSelectedFloodPriority(feature.properties); setSelectedExposure(null); setAssessmentTab("overview"); setMobilePanel("details"); }}>
                   <span>{feature.properties.boundary_name}</span><small>{feature.properties.priority_level} · {feature.properties.priority_score.toFixed(2)}</small>
                 </button>
               ))}
@@ -370,8 +376,8 @@ function MapDashboard() {
       </aside>
 
       {selected && (
-        <aside className="right card" aria-live="polite">
-          <button className="close" onClick={() => setSelected(null)} aria-label="Close details">×</button>
+        <aside className={`right card ${mobilePanel === "details" ? "mobile-open" : ""}`} aria-live="polite">
+          <button className="close" onClick={() => { setSelected(null); setMobilePanel(null); }} aria-label="Close details">×</button>
           <h3>{selected.hazard === "landslide" ? "Landslide" : "Flood"} · {selected.id}</h3>
           <span className="chip" style={{ background: TIER_COLORS[selected.tier] }}>{selected.tier}</span>
           {selected.hazard === "landslide" && selected.date.startsWith("Scenario:") && (
@@ -410,8 +416,8 @@ function MapDashboard() {
       )}
 
       {selectedRoad && (
-        <aside className="right card road-details" aria-live="polite">
-          <button className="close" onClick={() => setSelectedRoad(null)} aria-label="Close road details">×</button>
+        <aside className={`right card road-details ${mobilePanel === "details" ? "mobile-open" : ""}`} aria-live="polite">
+          <button className="close" onClick={() => { setSelectedRoad(null); setMobilePanel(null); }} aria-label="Close road details">×</button>
           <span className="road-kicker">ROAD NETWORK</span>
           <h3>{selectedRoad.name || "Unnamed road"}</h3>
           <span className="road-class">{formatRoadClass(selectedRoad.class)}</span>
@@ -428,8 +434,8 @@ function MapDashboard() {
       )}
 
       {selectedPopulation && (
-        <aside className="right card population-details" aria-live="polite">
-          <button className="close" onClick={() => setSelectedPopulation(null)} aria-label="Close population details">×</button>
+        <aside className={`right card population-details ${mobilePanel === "details" ? "mobile-open" : ""}`} aria-live="polite">
+          <button className="close" onClick={() => { setSelectedPopulation(null); setMobilePanel(null); }} aria-label="Close population details">×</button>
           <span className="population-kicker">POPULATION EXPOSURE</span>
           <h3>{selectedPopulation.ds_division || selectedPopulation.shapeName || "DS division"}</h3>
           <p className="note">{selectedPopulation.district}{selectedPopulation.province ? ` · ${selectedPopulation.province}` : ""}</p>
@@ -444,8 +450,8 @@ function MapDashboard() {
       )}
 
       {selectedFloodPriority && (
-        <aside className="right card flood-priority-details" aria-live="polite">
-          <button className="close" onClick={() => setSelectedFloodPriority(null)} aria-label="Close flood assessment">×</button>
+        <aside className={`right card flood-priority-details ${mobilePanel === "details" ? "mobile-open" : ""}`} aria-live="polite">
+          <button className="close" onClick={() => { setSelectedFloodPriority(null); setMobilePanel(null); }} aria-label="Close flood assessment">×</button>
           <span className="assessment-kicker">FLOOD PRIORITY ASSESSMENT</span>
           <h3>{selectedFloodPriority.boundary_name}</h3>
           <p className="note">{selectedFloodPriority.District} · {selectedFloodPriority.Division}</p>
@@ -508,9 +514,9 @@ function MapDashboard() {
 
       <section className="summary card" aria-live="polite"><b>{features.length}</b> {labels.records}<span>{mode === "both" ? `${landslide?.features.length ?? 0} landslide · ${flood?.features.length ?? 0} flood` : mode === "flood" ? "Flood monitoring points" : "Landslide locations"}</span></section>
 
-      <section className="records card" aria-label="Risk locations">
+      <section className={`records card ${mobilePanel === "records" ? "mobile-open" : ""}`} aria-label="Risk locations">
         <h3>{labels.records}</h3>
-        {features.length === 0 ? <p className="note">{labels.noData}</p> : <ul>{features.slice(0, 12).map((feature) => <li key={`${feature.properties.hazard}-${feature.properties.id}`}><button onClick={() => setSelected(feature.properties)}><span className="dot" style={{ background: feature.properties.hazard === "flood" ? "#35b9e9" : TIER_COLORS[feature.properties.tier] }} />{feature.properties.location ?? feature.properties.id}<small>{feature.properties.hazard} · {feature.properties.date}</small></button></li>)}</ul>}
+        {features.length === 0 ? <p className="note">{labels.noData}</p> : <ul>{features.slice(0, 12).map((feature) => <li key={`${feature.properties.hazard}-${feature.properties.id}`}><button onClick={() => { setSelected(feature.properties); setMobilePanel("details"); }}><span className="dot" style={{ background: feature.properties.hazard === "flood" ? "#35b9e9" : TIER_COLORS[feature.properties.tier] }} />{feature.properties.location ?? feature.properties.id}<small>{feature.properties.hazard} · {feature.properties.date}</small></button></li>)}</ul>}
         {floodForDate?.features.length ? <div className="flood-table-wrap"><h3>Flood readings · {floodDate}</h3><table className="flood-table"><thead><tr><th>Location</th><th>Severity</th><th>Rain</th></tr></thead><tbody>{floodForDate.features.map((feature) => <tr key={feature.properties.id}><td>{feature.properties.location}</td><td>{feature.properties.predicted_severity}</td><td>{feature.properties.rainfall?.toFixed(1)} mm</td></tr>)}</tbody></table><small className="flood-table-note">Daily history: {floodHistory.length.toLocaleString()} records from 2025. Points are monitoring locations, not flood extents.</small></div> : null}
       </section>
 
